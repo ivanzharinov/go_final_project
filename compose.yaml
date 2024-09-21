@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "${TODO_PORT:-7540}:7540"
+    environment:
+      - TODO_PORT=${TODO_PORT:-7540}
+    volumes:
+      - ./web:/root/web
