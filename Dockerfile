@@ -2,8 +2,9 @@ FROM golang:1.23 AS builder
 
 WORKDIR /app
 
-COPY go.mod .
-COPY go.sum .
+COPY go.mod ./
+COPY go.sum ./
+COPY ./internal/ ./internal/
 RUN go mod download
 
 COPY . .
