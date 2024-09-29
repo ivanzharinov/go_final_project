@@ -16,7 +16,7 @@ func main() {
 
 	r := chi.NewRouter()
 
-	r.Get("/api/nextdate", api.HandleNextDate)
+	api.RegisterAPIRoutes(r)
 
 	fileServer := http.FileServer(http.Dir(webDir))
 	r.Handle("/*", fileServer)

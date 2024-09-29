@@ -10,6 +10,14 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+type Task struct {
+	ID      int64
+	Date    string
+	Title   string
+	Comment string
+	Repeat  string
+}
+
 func InitDB() {
 	appPath, err := os.Executable()
 	if err != nil {
@@ -57,4 +65,33 @@ func create() {
 	}
 
 	fmt.Println("Таблица создана успешно")
+}
+
+func AddTask(t Task) (int64, error) {
+
+	db, err := sql.Open("sqlite", "./scheduler.db")
+	if err != nil {
+		return 0, err
+	}
+	defer db.Close()
+
+	query := `INSERT INTO scheduler (date, title, comment, repeat) VALUES (?, ?, ?, ?)`
+
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	res, err := stmt.Exec(t.Date, t.Title, t.Comment, t.Repeat)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
