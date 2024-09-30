@@ -3,9 +3,13 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"github.com/ivanzharinov/go_final_project/internal/utils"
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -94,4 +98,67 @@ func AddTask(t Task) (int64, error) {
 	}
 
 	return id, nil
+}
+
+func GetUpcomingTasks() ([]Task, error) {
+
+	db, err := sql.Open("sqlite", "./scheduler.db")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	query := `SELECT id, date, title, comment, repeat FROM scheduler`
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tasks := []Task{}
+	now := time.Now()
+
+	for rows.Next() {
+		var task Task
+		err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+		if err != nil {
+			return nil, err
+		}
+
+		taskDate, err := time.Parse("20060102", task.Date)
+		if err != nil {
+			continue
+		}
+
+		if taskDate.Before(now) {
+			if strings.TrimSpace(task.Repeat) != "" {
+				// следующая дата для повторяющейся задачи
+				nextDateStr, err := utils.NextDate(now, task.Date, task.Repeat)
+				if err != nil {
+					continue
+				}
+				task.Date = nextDateStr
+			} else {
+				// пропускаем прошедшие задачи без повторения
+				continue
+			}
+		}
+		tasks = append(tasks, task)
+	}
+
+	// проверка на ошибки
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// сортировка в порядке возрастания
+	sort.Slice(tasks, func(i, j int) bool {
+		return tasks[i].Date < tasks[j].Date
+	})
+
+	if len(tasks) > 50 {
+		tasks = tasks[:50]
+	}
+
+	return tasks, nil
 }

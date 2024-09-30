@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ivanzharinov/go_final_project/internal/utils"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -69,7 +70,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 		if strings.TrimSpace(req.Repeat) == "" {
 			taskDate = now
 		} else {
-			nextDateStr, err := NextDate(now, req.Date, req.Repeat)
+			nextDateStr, err := utils.NextDate(now, req.Date, req.Repeat)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				json.NewEncoder(w).Encode(AddTaskResponse{Error: "неверное правило повторения"})
@@ -86,7 +87,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 		Comment: req.Comment,
 		Repeat:  req.Repeat,
 	}
-	fmt.Println(newTask)
+
 	// добавление задачи в базу данных
 	id, err := db.AddTask(newTask)
 	if err != nil {
@@ -96,4 +97,46 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(AddTaskResponse{ID: fmt.Sprintf("%d", id)})
+}
+
+type TaskResponseItem struct {
+	ID      string `json:"id"`
+	Date    string `json:"date"`
+	Title   string `json:"title"`
+	Comment string `json:"comment"`
+	Repeat  string `json:"repeat"`
+}
+
+type TasksResponse struct {
+	Tasks []TaskResponseItem `json:"tasks"`
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+func Tasks(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	tasks, err := db.GetUpcomingTasks()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	response := TasksResponse{Tasks: []TaskResponseItem{}}
+
+	for _, t := range tasks {
+		taskItem := TaskResponseItem{
+			ID:      fmt.Sprintf("%d", t.ID),
+			Date:    t.Date,
+			Title:   t.Title,
+			Comment: t.Comment,
+			Repeat:  t.Repeat,
+		}
+		response.Tasks = append(response.Tasks, taskItem)
+	}
+
+	json.NewEncoder(w).Encode(response)
 }

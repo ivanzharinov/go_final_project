@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/ivanzharinov/go_final_project/internal/utils"
 	"net/http"
 	"time"
 )
@@ -9,6 +10,7 @@ import (
 func RegisterAPIRoutes(r *chi.Mux) {
 	r.Get("/api/nextdate", HandleNextDate)
 	r.Post("/api/task", HandleAddTask)
+	r.Get("/api/tasks", Tasks)
 }
 
 func HandleNextDate(w http.ResponseWriter, r *http.Request) {
@@ -22,7 +24,7 @@ func HandleNextDate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nextDate, err := NextDate(now, dateStr, repeatStr)
+	nextDate, err := utils.NextDate(now, dateStr, repeatStr)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
