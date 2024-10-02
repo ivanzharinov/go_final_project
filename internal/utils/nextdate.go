@@ -36,6 +36,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		for !nextDate.After(now) {
 			nextDate = nextDate.AddDate(0, 0, days)
 		}
+
 		return nextDate.Format("20060102"), nil
 	}
 

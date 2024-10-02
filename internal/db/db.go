@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -42,7 +41,7 @@ func InitDB() {
 }
 
 func create() {
-	db, err := sql.Open("sqlite", "./scheduler.db")
+	db, err := sql.Open("sqlite", "scheduler.db")
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -73,7 +72,7 @@ func create() {
 
 func AddTask(t Task) (int64, error) {
 
-	db, err := sql.Open("sqlite", "./scheduler.db")
+	db, err := sql.Open("sqlite", "scheduler.db")
 	if err != nil {
 		return 0, err
 	}
@@ -102,7 +101,7 @@ func AddTask(t Task) (int64, error) {
 
 func GetUpcomingTasks() ([]Task, error) {
 
-	db, err := sql.Open("sqlite", "./scheduler.db")
+	db, err := sql.Open("sqlite", "scheduler.db")
 	if err != nil {
 		return nil, err
 	}
@@ -131,21 +130,14 @@ func GetUpcomingTasks() ([]Task, error) {
 		}
 
 		if taskDate.Before(now) {
-			if strings.TrimSpace(task.Repeat) != "" {
-				// следующая дата для повторяющейся задачи
-				nextDateStr, err := utils.NextDate(now, task.Date, task.Repeat)
-				if err != nil {
-					continue
-				}
-				task.Date = nextDateStr
-			} else {
-				// пропускаем прошедшие задачи без повторения
+			nextDateStr, err := utils.NextDate(now, task.Date, task.Repeat)
+			if err != nil {
 				continue
 			}
+			task.Date = nextDateStr
 		}
 		tasks = append(tasks, task)
 	}
-
 	// проверка на ошибки
 	if err = rows.Err(); err != nil {
 		return nil, err
