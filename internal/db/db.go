@@ -14,14 +14,17 @@ import (
 )
 
 type Task struct {
-	ID      int64
-	Date    string
-	Title   string
-	Comment string
-	Repeat  string
+	ID      int64  `json:"id"`
+	Date    string `json:"date"`
+	Title   string `json:"title"`
+	Comment string `json:"comment"`
+	Repeat  string `json:"repeat"`
 }
 
-var db *sql.DB
+var (
+	db              *sql.DB
+	ErrTaskNotFound = fmt.Errorf("задача не найдена")
+)
 
 func InitDB() {
 	wd, err := os.Getwd()
@@ -76,12 +79,12 @@ func AddTask(t Task) (int64, error) {
 
 	res, err := db.Exec(query, t.Date, t.Title, t.Comment, t.Repeat)
 	if err != nil {
-		return 0, fmt.Errorf("Ошибка при добавлении задачи: %v", err)
+		return 0, fmt.Errorf("ошибка при добавлении задачи: %v", err)
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("Ошибка при получении ID последней вставленной записи: %v", err)
+		return 0, fmt.Errorf("ошибка при получении ID последней вставленной записи: %v", err)
 	}
 
 	return id, nil
@@ -91,7 +94,7 @@ func GetUpcomingTasks() ([]Task, error) {
 	query := `SELECT id, date, title, comment, repeat FROM scheduler`
 	rows, err := db.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("Ошибка при выполнении запроса: %v", err)
+		return nil, fmt.Errorf("ошибка при выполнении запроса: %v", err)
 	}
 	defer rows.Close()
 
@@ -102,7 +105,7 @@ func GetUpcomingTasks() ([]Task, error) {
 		var task Task
 		err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 		if err != nil {
-			return nil, fmt.Errorf("Ошибка при чтении строки из результата: %v", err)
+			return nil, fmt.Errorf("ошибка при чтении строки из результата: %v", err)
 		}
 
 		taskDate, err := time.Parse("20060102", task.Date)
@@ -123,7 +126,7 @@ func GetUpcomingTasks() ([]Task, error) {
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("Ошибка при обработке результатов запроса: %v", err)
+		return nil, fmt.Errorf("ошибка при обработке результатов запроса: %v", err)
 	}
 
 	// Сортировка задач по дате
@@ -137,4 +140,48 @@ func GetUpcomingTasks() ([]Task, error) {
 	}
 
 	return tasks, nil
+}
+
+func GetTaskByID(id int64) (Task, error) {
+	var task Task
+	query := `SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?`
+	err := db.QueryRow(query, id).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return Task{}, fmt.Errorf("задача с ID %d не найдена", id)
+		}
+		return Task{}, err
+	}
+
+	return task, nil
+}
+
+func UpdateTask(task Task) error {
+
+	_, err := utils.NextDate(time.Now(), task.Date, task.Repeat)
+	if err != nil {
+		return fmt.Errorf("ошибка при вычислении следующей даты: %w", err)
+	}
+
+	query := `
+        UPDATE scheduler
+        SET date = ?, title = ?, comment = ?, repeat = ?
+        WHERE id = ?
+    `
+
+	res, err := db.Exec(query, task.Date, task.Title, task.Comment, task.Repeat, task.ID)
+	if err != nil {
+		return fmt.Errorf("ошибка при обновлении задачи: %v", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("ошибка при получении количества затронутых строк: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+
+	return nil
 }

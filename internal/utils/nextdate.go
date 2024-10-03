@@ -33,7 +33,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 			return "", nil
 		}
 
-		if isSameDate(startDate, now) && days == 1 {
+		if isSameDate(startDate, now) {
 			return startDate.Format("20060102"), nil
 		}
 
@@ -66,7 +66,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		return nextDate.Format("20060102"), nil
 	}
 
-	return "", errors.New("Неподдерживаемый формат повтора")
+	return "", errors.New("неподдерживаемый формат повтора")
 }
 
 func isSameDate(a, b time.Time) bool {
