@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -10,22 +9,28 @@ import (
 
 func NextDate(now time.Time, date string, repeat string) (string, error) {
 
-	if date == "" || repeat == "" {
-		return "", errors.New("неверная дата или повторяющееся правило")
+	if date == "" {
+		return "", nil
 	}
 
 	startDate, err := time.Parse("20060102", date)
 	if err != nil {
-		return "", fmt.Errorf("недопустимый формат даты: %w", err)
+		return "", nil
+	}
+
+	if repeat == "" {
+		if startDate.After(now) {
+			return startDate.Format("20060102"), nil
+		}
+		return "", nil
 	}
 
 	// проверка на ежедневный интервал
 	if strings.HasPrefix(repeat, "d ") {
 		daysStr := strings.TrimPrefix(repeat, "d ")
 		days, err := strconv.Atoi(daysStr)
-		fmt.Println(days)
 		if err != nil || days < 1 || days > 400 {
-			return "", fmt.Errorf("недопустимый дневной интервал")
+			return "", nil
 		}
 
 		if isSameDate(startDate, now) && days == 1 {
@@ -61,7 +66,7 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		return nextDate.Format("20060102"), nil
 	}
 
-	return "", errors.New("неподдерживаемый формат повтора")
+	return "", errors.New("Неподдерживаемый формат повтора")
 }
 
 func isSameDate(a, b time.Time) bool {

@@ -20,7 +20,7 @@ func HandleNextDate(w http.ResponseWriter, r *http.Request) {
 
 	now, err := time.Parse("20060102", nowStr)
 	if err != nil {
-		http.Error(w, "недопустимый формат даты", http.StatusBadRequest)
+		http.Error(w, "Недопустимый формат даты", http.StatusBadRequest)
 		return
 	}
 
