@@ -1,7 +1,8 @@
-package api
+package transport
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/ivanzharinov/go_final_project/internal/task"
 	"github.com/ivanzharinov/go_final_project/internal/utils"
 	"net/http"
 	"time"
@@ -10,7 +11,7 @@ import (
 func RegisterAPIRoutes(r *chi.Mux) {
 	r.Get("/api/nextdate", HandleNextDate)
 	r.Post("/api/task", HandleAddTask)
-	r.Get("/api/tasks", Tasks)
+	r.Get("/api/tasks", task.Tasks)
 }
 
 func HandleNextDate(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +38,7 @@ func HandleNextDate(w http.ResponseWriter, r *http.Request) {
 func HandleAddTask(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		AddTask(w, r)
+		task.AddTask(w, r)
 	default:
 		http.Error(w, "Метод не поддерживается", http.StatusMethodNotAllowed)
 	}

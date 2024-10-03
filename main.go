@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/ivanzharinov/go_final_project/internal/api"
 	"github.com/ivanzharinov/go_final_project/internal/db"
+	"github.com/ivanzharinov/go_final_project/internal/transport"
 	"net/http"
 )
 
@@ -16,7 +16,7 @@ func main() {
 
 	r := chi.NewRouter()
 
-	api.RegisterAPIRoutes(r)
+	transport.RegisterAPIRoutes(r)
 
 	fileServer := http.FileServer(http.Dir(webDir))
 	r.Handle("/*", fileServer)
