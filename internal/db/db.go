@@ -185,3 +185,23 @@ func UpdateTask(task Task) error {
 
 	return nil
 }
+
+func DeleteTask(id int64) error {
+	query := `DELETE FROM scheduler WHERE id = ?`
+	res, err := db.Exec(query, id)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("ошибка при получении количества затронутых строк: %v", err)
+	}
+
+	if rowsAffected == 0 {
+		return ErrTaskNotFound
+	}
+
+	return nil
+
+}
