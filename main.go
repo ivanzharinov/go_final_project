@@ -10,7 +10,6 @@ import (
 
 func main() {
 	db.InitDB()
-	//port := os.Getenv("TODO_PORT")
 	port := "7540"
 	webDir := "./web"
 
