@@ -2,6 +2,7 @@ package transport
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/ivanzharinov/go_final_project/internal/db"
 	"github.com/ivanzharinov/go_final_project/internal/task"
@@ -54,28 +55,28 @@ func HandleAddTask(w http.ResponseWriter, r *http.Request) {
 func getTaskHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "отсутствует id"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "отсутствует id"})
 		return
 	}
 
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "недопустимый параметр id"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "недопустимый параметр id"})
 		return
 	}
 
-	task, err := db.GetTaskByID(id)
+	foundTask, err := db.GetTaskByID(id)
 	if err != nil {
-		respondWithJSON(w, http.StatusNotFound, map[string]string{"error": "задача не найдена"})
+		utils.RespondWithJSON(w, http.StatusNotFound, map[string]string{"error": "задача не найдена"})
 		return
 	}
 
 	response := map[string]string{
-		"id":      strconv.FormatInt(task.ID, 10),
-		"date":    task.Date,
-		"title":   task.Title,
-		"comment": task.Comment,
-		"repeat":  task.Repeat,
+		"id":      strconv.FormatInt(foundTask.ID, 10),
+		"date":    foundTask.Date,
+		"title":   foundTask.Title,
+		"comment": foundTask.Comment,
+		"repeat":  foundTask.Repeat,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -96,34 +97,34 @@ func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&req)
 	if err != nil {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Неверный формат JSON"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Неверный формат JSON"})
 		return
 	}
 
 	if req.ID == "" {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Не указан идентификатор"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Не указан идентификатор"})
 		return
 	}
 
 	id, err := strconv.ParseInt(req.ID, 10, 64)
 	if err != nil {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Недопустимый формат идентификатора"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Недопустимый формат идентификатора"})
 		return
 	}
 
 	if req.Date == "" {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Дата не может быть пустой"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Дата не может быть пустой"})
 		return
 	}
 
 	_, err = time.Parse("20060102", req.Date)
 	if err != nil {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Неверный формат даты"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Неверный формат даты"})
 		return
 	}
 
 	if req.Title == "" {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Заголовок не может быть пустым"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Заголовок не может быть пустым"})
 		return
 	}
 
@@ -135,96 +136,91 @@ func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
 		Repeat:  req.Repeat,
 	}
 
-	err = db.UpdateTask(updatedTask)
-	if err != nil {
-		if err == db.ErrTaskNotFound {
-			respondWithJSON(w, http.StatusNotFound, map[string]string{"error": "Задача не найдена"})
+	taskErr := db.UpdateTask(updatedTask)
+	if taskErr != nil {
+		if errors.Is(taskErr, db.ErrTaskNotFound) {
+			utils.RespondWithJSON(w, http.StatusNotFound, map[string]string{"error": "Задача не найдена"})
 		} else {
-			respondWithJSON(w, http.StatusInternalServerError, map[string]string{"error": "Ошибка обновления задачи"})
+			utils.RespondWithJSON(w, http.StatusInternalServerError, map[string]string{"error": "Ошибка обновления задачи"})
 		}
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]interface{}{})
+	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{})
 }
 
 func handleTaskDone(w http.ResponseWriter, r *http.Request) {
 
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Отсутствует идентификатор задачи"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Отсутствует идентификатор задачи"})
 		return
 	}
 
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Недопустимый формат идентификатора"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Недопустимый формат идентификатора"})
 		return
 	}
 
 	task, err := db.GetTaskByID(id)
 	if err != nil {
-		if err == db.ErrTaskNotFound {
-			respondWithJSON(w, http.StatusNotFound, map[string]string{"error": "Задача не найдена"})
+		if errors.Is(err, db.ErrTaskNotFound) {
+			utils.RespondWithJSON(w, http.StatusNotFound, map[string]string{"error": "Задача не найдена"})
 			return
 		}
-		respondWithJSON(w, http.StatusInternalServerError, map[string]string{"error": "Ошибка при получении задачи"})
+		utils.RespondWithJSON(w, http.StatusInternalServerError, map[string]string{"error": "Ошибка при получении задачи"})
 		return
 	}
 
 	if task.Repeat == "" {
 		err = db.DeleteTask(id)
 		if err != nil {
-			respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Ошибка удаления задачи"})
+			utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Ошибка удаления задачи"})
 			return
 		}
 	} else {
 		now := time.Now()
 		nextDate, err := utils.NextDate(now, task.Date, task.Repeat)
 		if err != nil {
-			respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Ошибка вычисления следующей даты"})
+			utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Ошибка вычисления следующей даты"})
 			return
 		}
 
 		task.Date = nextDate
 		err = db.UpdateTask(task)
 		if err != nil {
-			respondWithJSON(w, http.StatusInternalServerError, map[string]string{"error": "Ошибка обновления задачи"})
+			utils.RespondWithJSON(w, http.StatusInternalServerError, map[string]string{"error": "Ошибка обновления задачи"})
 			return
 		}
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]interface{}{})
+	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{})
 }
 
 func handleTaskDelete(w http.ResponseWriter, r *http.Request) {
 
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Отсутствует идентификатор задачи"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Отсутствует идентификатор задачи"})
 		return
 	}
 
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		respondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Недопустимый формат идентификатора"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Недопустимый формат идентификатора"})
 		return
 	}
 
 	err = db.DeleteTask(id)
 	if err != nil {
-		if err == db.ErrTaskNotFound {
-			respondWithJSON(w, http.StatusNotFound, map[string]string{"error": "Задача не найдена"})
+		if errors.Is(err, db.ErrTaskNotFound) {
+			utils.RespondWithJSON(w, http.StatusNotFound, map[string]string{"error": "Задача не найдена"})
 			return
 		}
-		respondWithJSON(w, http.StatusInternalServerError, map[string]string{"error": "Ошибка удаления задачи"})
+		utils.RespondWithJSON(w, http.StatusInternalServerError, map[string]string{"error": "Ошибка удаления задачи"})
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]interface{}{})
-}
-func respondWithJSON(w http.ResponseWriter, statusCode int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(payload)
+	utils.RespondWithJSON(w, http.StatusOK, map[string]interface{}{})
 }

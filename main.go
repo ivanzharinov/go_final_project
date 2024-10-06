@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/ivanzharinov/go_final_project/internal/db"
 	"github.com/ivanzharinov/go_final_project/internal/transport"
+	"log"
 	"net/http"
 )
 
@@ -20,6 +21,8 @@ func main() {
 	fileServer := http.FileServer(http.Dir(webDir))
 	r.Handle("/*", fileServer)
 
-	fmt.Printf("Сервер запущен и слушает порт %s", port)
-	http.ListenAndServe(":"+port, r)
+	fmt.Printf("Сервер запущен и слушает порт %s\n", port)
+	if err := http.ListenAndServe(":"+port, r); err != nil {
+		log.Fatalf("Ошибка при запуске сервера: %v", err)
+	}
 }

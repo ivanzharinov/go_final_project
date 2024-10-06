@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ivanzharinov/go_final_project/internal/utils"
-	"io/ioutil"
+	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -25,12 +26,9 @@ type AddTaskResponse struct {
 }
 
 func AddTask(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(AddTaskResponse{Error: "не удалось прочитать тело запроса"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, AddTaskResponse{Error: "не удалось прочитать тело запроса"})
 		return
 	}
 	defer r.Body.Close()
@@ -38,16 +36,14 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	var req AddTaskRequest
 	err = json.Unmarshal(body, &req)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(AddTaskResponse{Error: "неверный формат JSON"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, AddTaskResponse{Error: "неверный формат JSON"})
 		return
 	}
 
 	// проверка обязательного поля title
 	req.Title = strings.TrimSpace(req.Title)
 	if req.Title == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(AddTaskResponse{Error: "не указан заголовок задачи"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, AddTaskResponse{Error: "не указан заголовок задачи"})
 		return
 	}
 
@@ -61,8 +57,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 
 	taskDate, err = time.Parse("20060102", req.Date)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(AddTaskResponse{Error: "дата указана в неверном формате"})
+		utils.RespondWithJSON(w, http.StatusBadRequest, AddTaskResponse{Error: "дата указана в неверном формате"})
 		return
 	}
 
@@ -72,8 +67,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 		} else {
 			nextDateStr, err := utils.NextDate(now, req.Date, req.Repeat)
 			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(AddTaskResponse{Error: "неверное правило повторения"})
+				utils.RespondWithJSON(w, http.StatusBadRequest, AddTaskResponse{Error: "неверное правило повторения"})
 				return
 			}
 			taskDate, _ = time.Parse("20060102", nextDateStr)
@@ -91,12 +85,11 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 	// добавление задачи в базу данных
 	id, err := db.AddTask(newTask)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(AddTaskResponse{Error: err.Error()})
+		utils.RespondWithJSON(w, http.StatusInternalServerError, AddTaskResponse{Error: err.Error()})
 		return
 	}
 
-	json.NewEncoder(w).Encode(AddTaskResponse{ID: fmt.Sprintf("%d", id)})
+	utils.RespondWithJSON(w, http.StatusCreated, AddTaskResponse{ID: fmt.Sprintf("%d", id)})
 }
 
 type TaskResponseItem struct {
@@ -116,12 +109,10 @@ type ErrorResponse struct {
 }
 
 func Tasks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	tasks, err := db.GetUpcomingTasks()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		log.Printf("Ошибка получения задач: %w", err)
+		utils.RespondWithJSON(w, http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
 
@@ -138,5 +129,5 @@ func Tasks(w http.ResponseWriter, r *http.Request) {
 		response.Tasks = append(response.Tasks, taskItem)
 	}
 
-	json.NewEncoder(w).Encode(response)
+	utils.RespondWithJSON(w, http.StatusOK, response)
 }

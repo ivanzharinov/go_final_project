@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/ivanzharinov/go_final_project/internal/utils"
 	"log"
@@ -29,7 +30,7 @@ var (
 func InitDB() {
 	wd, err := os.Getwd()
 	if err != nil {
-		log.Fatalf("Ошибка при получении текущего рабочего каталога: %v", err)
+		log.Fatalf("Ошибка при получении текущего рабочего каталога: %w", err)
 	}
 	dbFile := filepath.Join(wd, "scheduler.db")
 
@@ -37,12 +38,12 @@ func InitDB() {
 	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
 		dbExists = false
 	} else if err != nil {
-		log.Fatalf("Ошибка при проверке существования файла базы данных: %v", err)
+		log.Fatalf("Ошибка при проверке существования файла базы данных: %w", err)
 	}
 
 	db, err = sql.Open("sqlite", dbFile)
 	if err != nil {
-		log.Fatalf("Ошибка при открытии базы данных: %v", err)
+		log.Fatalf("Ошибка при открытии базы данных: %w", err)
 	}
 
 	if !dbExists {
@@ -68,7 +69,7 @@ func createTables() {
 
 	_, err := db.Exec(createTableSQL)
 	if err != nil {
-		log.Fatalf("Ошибка при создании таблиц: %v", err)
+		log.Fatalf("Ошибка при создании таблиц: %w", err)
 	}
 
 	fmt.Println("Таблицы созданы успешно")
@@ -79,12 +80,12 @@ func AddTask(t Task) (int64, error) {
 
 	res, err := db.Exec(query, t.Date, t.Title, t.Comment, t.Repeat)
 	if err != nil {
-		return 0, fmt.Errorf("ошибка при добавлении задачи: %v", err)
+		return 0, fmt.Errorf("ошибка при добавлении задачи: %w", err)
 	}
 
 	id, err := res.LastInsertId()
 	if err != nil {
-		return 0, fmt.Errorf("ошибка при получении ID последней вставленной записи: %v", err)
+		return 0, fmt.Errorf("ошибка при получении ID последней вставленной записи: %w", err)
 	}
 
 	return id, nil
@@ -94,7 +95,7 @@ func GetUpcomingTasks() ([]Task, error) {
 	query := `SELECT id, date, title, comment, repeat FROM scheduler`
 	rows, err := db.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка при выполнении запроса: %v", err)
+		return nil, fmt.Errorf("ошибка при выполнении запроса: %w", err)
 	}
 	defer rows.Close()
 
@@ -105,20 +106,18 @@ func GetUpcomingTasks() ([]Task, error) {
 		var task Task
 		err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 		if err != nil {
-			return nil, fmt.Errorf("ошибка при чтении строки из результата: %v", err)
+			return nil, fmt.Errorf("ошибка при чтении строки из результата: %w", err)
 		}
 
 		taskDate, err := time.Parse("20060102", task.Date)
 		if err != nil {
-			log.Printf("Ошибка при разборе даты задачи ID %d: %v", task.ID, err)
-			continue
+			return nil, fmt.Errorf("Ошибка при разборе даты задачи ID %d: %w", task.ID, err)
 		}
 
 		if taskDate.Before(now) || taskDate.Equal(now) {
 			nextDateStr, err := utils.NextDate(now, task.Date, task.Repeat)
 			if err != nil {
-				log.Printf("Ошибка при вычислении следующей даты для задачи ID %d: %v", task.ID, err)
-				continue
+				return nil, fmt.Errorf("Ошибка при вычислении следующей даты для задачи ID %d: %w", task.ID, err)
 			}
 			task.Date = nextDateStr
 		}
@@ -126,7 +125,7 @@ func GetUpcomingTasks() ([]Task, error) {
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("ошибка при обработке результатов запроса: %v", err)
+		return nil, fmt.Errorf("ошибка при обработке результатов запроса: %w", err)
 	}
 
 	// Сортировка задач по дате
@@ -147,7 +146,7 @@ func GetTaskByID(id int64) (Task, error) {
 	query := `SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?`
 	err := db.QueryRow(query, id).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return Task{}, fmt.Errorf("задача с ID %d не найдена", id)
 		}
 		return Task{}, err
@@ -171,12 +170,12 @@ func UpdateTask(task Task) error {
 
 	res, err := db.Exec(query, task.Date, task.Title, task.Comment, task.Repeat, task.ID)
 	if err != nil {
-		return fmt.Errorf("ошибка при обновлении задачи: %v", err)
+		return fmt.Errorf("ошибка при обновлении задачи: %w", err)
 	}
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("ошибка при получении количества затронутых строк: %v", err)
+		return fmt.Errorf("ошибка при получении количества затронутых строк: %w", err)
 	}
 
 	if rowsAffected == 0 {
@@ -195,7 +194,7 @@ func DeleteTask(id int64) error {
 
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("ошибка при получении количества затронутых строк: %v", err)
+		return fmt.Errorf("ошибка при получении количества затронутых строк: %w", err)
 	}
 
 	if rowsAffected == 0 {
