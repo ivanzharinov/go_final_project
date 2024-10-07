@@ -163,7 +163,7 @@ func handleTaskDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task, err := db.GetTaskByID(id)
+	foundTask, err := db.GetTaskByID(id)
 	if err != nil {
 		if errors.Is(err, db.ErrTaskNotFound) {
 			utils.RespondWithJSON(w, http.StatusNotFound, map[string]string{"error": "Задача не найдена"})
@@ -173,7 +173,7 @@ func handleTaskDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if task.Repeat == "" {
+	if foundTask.Repeat == "" {
 		err = db.DeleteTask(id)
 		if err != nil {
 			utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Ошибка удаления задачи"})
@@ -181,14 +181,14 @@ func handleTaskDone(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		now := time.Now()
-		nextDate, err := utils.NextDate(now, task.Date, task.Repeat)
+		nextDate, err := utils.NextDate(now, foundTask.Date, foundTask.Repeat)
 		if err != nil {
 			utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Ошибка вычисления следующей даты"})
 			return
 		}
 
-		task.Date = nextDate
-		err = db.UpdateTask(task)
+		foundTask.Date = nextDate
+		err = db.UpdateTask(foundTask)
 		if err != nil {
 			utils.RespondWithJSON(w, http.StatusInternalServerError, map[string]string{"error": "Ошибка обновления задачи"})
 			return
