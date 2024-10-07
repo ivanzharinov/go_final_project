@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func NextDate(now time.Time, date string, repeat string) (string, error) {
+func NextDate(now time.Time, date string, repeat string, status string) (string, error) {
 
 	if date == "" {
 		return "", nil
@@ -32,10 +32,14 @@ func NextDate(now time.Time, date string, repeat string) (string, error) {
 		if err != nil || days < 1 || days > 400 {
 			return "", nil
 		}
-		if isSameDate(startDate, now) {
-			return startDate.Format("20060102"), nil
+		if status != "done" {
+			if isSameDate(startDate, now) {
+				return startDate.Format("20060102"), nil
+			}
 		}
+
 		nextDate := startDate.AddDate(0, 0, days)
+
 		for !nextDate.After(now) {
 			nextDate = nextDate.AddDate(0, 0, days)
 		}

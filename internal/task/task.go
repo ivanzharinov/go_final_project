@@ -65,7 +65,7 @@ func AddTask(w http.ResponseWriter, r *http.Request) {
 		if strings.TrimSpace(req.Repeat) == "" {
 			taskDate = now
 		} else {
-			nextDateStr, err := utils.NextDate(now, req.Date, req.Repeat)
+			nextDateStr, err := utils.NextDate(now, req.Date, req.Repeat, "add")
 			if err != nil {
 				utils.RespondWithJSON(w, http.StatusBadRequest, AddTaskResponse{Error: "неверное правило повторения"})
 				return

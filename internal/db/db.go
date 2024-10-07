@@ -115,7 +115,7 @@ func GetUpcomingTasks() ([]Task, error) {
 		}
 
 		if taskDate.Before(now) || taskDate.Equal(now) {
-			nextDateStr, err := utils.NextDate(now, task.Date, task.Repeat)
+			nextDateStr, err := utils.NextDate(now, task.Date, task.Repeat, "list")
 			if err != nil {
 				return nil, fmt.Errorf("Ошибка при вычислении следующей даты для задачи ID %d: %w", task.ID, err)
 			}
@@ -157,7 +157,7 @@ func GetTaskByID(id int64) (Task, error) {
 
 func UpdateTask(task Task) error {
 
-	_, err := utils.NextDate(time.Now(), task.Date, task.Repeat)
+	_, err := utils.NextDate(time.Now(), task.Date, task.Repeat, "check")
 	if err != nil {
 		return fmt.Errorf("ошибка при вычислении следующей даты: %w", err)
 	}

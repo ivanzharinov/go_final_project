@@ -33,7 +33,7 @@ func HandleNextDate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nextDate, err := utils.NextDate(now, dateStr, repeatStr)
+	nextDate, err := utils.NextDate(now, dateStr, repeatStr, "nextdate")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -181,7 +181,7 @@ func handleTaskDone(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		now := time.Now()
-		nextDate, err := utils.NextDate(now, foundTask.Date, foundTask.Repeat)
+		nextDate, err := utils.NextDate(now, foundTask.Date, foundTask.Repeat, "done")
 		if err != nil {
 			utils.RespondWithJSON(w, http.StatusBadRequest, map[string]string{"error": "Ошибка вычисления следующей даты"})
 			return
